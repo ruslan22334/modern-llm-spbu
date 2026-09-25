@@ -1,0 +1,14 @@
+{
+  "steps": 100,
+  "batch_size": 16,
+  "seq_len": 64,
+  "learning_rate": 0.001,
+  "seed": 42,
+  "device": "cuda",
+  "torch_version": "2.11.0+cu128",
+  "dataset": "four fixed UTF-8 lines repeated 16 times",
+  "examples": 87,
+  "sample_prompt": "кот ",
+  "sample_new_bytes": 100,
+  "sample_context_len": 64
+}
