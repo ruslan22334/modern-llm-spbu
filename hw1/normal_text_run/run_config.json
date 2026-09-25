@@ -1,0 +1,14 @@
+{
+  "steps": 200,
+  "batch_size": 16,
+  "seq_len": 64,
+  "learning_rate": 0.001,
+  "seed": 42,
+  "device": "cuda",
+  "torch_version": "2.11.0+cu128",
+  "dataset": "corpus.txt",
+  "examples": 52,
+  "sample_prompt": "В субботу ",
+  "sample_new_bytes": 100,
+  "sample_context_len": 64
+}
