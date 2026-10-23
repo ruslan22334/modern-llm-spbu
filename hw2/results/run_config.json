@@ -1,0 +1,125 @@
+{
+  "steps": 100,
+  "seq_len": 64,
+  "local_batches": [
+    3,
+    5
+  ],
+  "lr": 0.001,
+  "weight_decay": 0.0,
+  "seed": 42,
+  "world_size": 2,
+  "device": "cuda:0",
+  "torch_version": "2.11.0+cu128",
+  "input_config": "config.json",
+  "text_file": "../hw1/corpus.txt",
+  "gradient_normalization": "local token SUM / global token count, then SUM reduce_scatter",
+  "ranks": [
+    {
+      "rank": 0,
+      "device": "cuda:0",
+      "examples": 52,
+      "local_batch": 3,
+      "units": [
+        {
+          "unit": "token_embedding",
+          "full_numel": 65536,
+          "shard_numel": 32768,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.0",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.1",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.2",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.3",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "output",
+          "full_numel": 65792,
+          "shard_numel": 32896,
+          "padding_numel": 0
+        }
+      ],
+      "local_parameter_numel": 1574016,
+      "adam_moment_numel": 3148032
+    },
+    {
+      "rank": 1,
+      "device": "cuda:0",
+      "examples": 52,
+      "local_batch": 5,
+      "units": [
+        {
+          "unit": "token_embedding",
+          "full_numel": 65536,
+          "shard_numel": 32768,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.0",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.1",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.2",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "blocks.3",
+          "full_numel": 754176,
+          "shard_numel": 377088,
+          "padding_numel": 0
+        },
+        {
+          "unit": "output",
+          "full_numel": 65792,
+          "shard_numel": 32896,
+          "padding_numel": 0
+        }
+      ],
+      "local_parameter_numel": 1574016,
+      "adam_moment_numel": 3148032
+    }
+  ],
+  "collectives_per_rank": [
+    {
+      "broadcast": 6,
+      "all_reduce": 12,
+      "all_gather": 1266,
+      "reduce_scatter": 600
+    },
+    {
+      "broadcast": 6,
+      "all_reduce": 12,
+      "all_gather": 1266,
+      "reduce_scatter": 600
+    }
+  ]
+}
