@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emugpu"
+version = "0.3.2"
+description = "PyTorch multi-process communication emulator for one CPU host or assigned CUDA devices"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.4", "numpy>=1.24"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+debug = ["debugpy>=1.8"]
+triton = ["triton>=3.0; sys_platform == 'linux'"]
+
+[project.scripts]
+emugpu = "emugpu.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+emugpu = ["py.typed"]
+"emugpu.assets" = ["*.html", "*.json"]

@@ -1,0 +1,2 @@
+-r ../hw1/requirements.txt
+numpy>=1.24

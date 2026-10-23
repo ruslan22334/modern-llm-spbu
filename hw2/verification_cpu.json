@@ -1,0 +1,356 @@
+{
+  "torch_version": "2.11.0+cu128",
+  "cases": [
+    {
+      "world_size": 1,
+      "ranks": [
+        {
+          "status": "PASS",
+          "rank": 0,
+          "pid": 52036,
+          "device": "cpu",
+          "steps": 3,
+          "batches": [
+            [
+              1
+            ],
+            [
+              1
+            ],
+            [
+              1
+            ]
+          ],
+          "max_abs_error": {
+            "logits": 0.0,
+            "gradients": 0.0,
+            "parameters": 0.0,
+            "adam_moments": 0.0
+          },
+          "local_parameter_numel": 5968,
+          "units": [
+            {
+              "unit": "token_embedding",
+              "full_numel": 496,
+              "shard_numel": 496,
+              "padding_numel": 0
+            },
+            {
+              "unit": "blocks.0",
+              "full_numel": 2480,
+              "shard_numel": 2480,
+              "padding_numel": 0
+            },
+            {
+              "unit": "blocks.1",
+              "full_numel": 2480,
+              "shard_numel": 2480,
+              "padding_numel": 0
+            },
+            {
+              "unit": "output",
+              "full_numel": 512,
+              "shard_numel": 512,
+              "padding_numel": 0
+            }
+          ],
+          "reduce_scatter_calls": 12
+        }
+      ]
+    },
+    {
+      "world_size": 2,
+      "ranks": [
+        {
+          "status": "PASS",
+          "rank": 0,
+          "pid": 28712,
+          "device": "cpu",
+          "steps": 3,
+          "batches": [
+            [
+              1,
+              2
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              2
+            ]
+          ],
+          "max_abs_error": {
+            "logits": 4.440892098500626e-16,
+            "gradients": 3.122502256758253e-17,
+            "parameters": 2.220446049250313e-16,
+            "adam_moments": 6.5052130349130266e-18
+          },
+          "local_parameter_numel": 2984,
+          "units": [
+            {
+              "unit": "token_embedding",
+              "full_numel": 496,
+              "shard_numel": 248,
+              "padding_numel": 0
+            },
+            {
+              "unit": "blocks.0",
+              "full_numel": 2480,
+              "shard_numel": 1240,
+              "padding_numel": 0
+            },
+            {
+              "unit": "blocks.1",
+              "full_numel": 2480,
+              "shard_numel": 1240,
+              "padding_numel": 0
+            },
+            {
+              "unit": "output",
+              "full_numel": 512,
+              "shard_numel": 256,
+              "padding_numel": 0
+            }
+          ],
+          "reduce_scatter_calls": 12
+        },
+        {
+          "status": "PASS",
+          "rank": 1,
+          "pid": 48040,
+          "device": "cpu",
+          "steps": 3,
+          "batches": [
+            [
+              1,
+              2
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              2
+            ]
+          ],
+          "max_abs_error": {
+            "logits": 2.220446049250313e-16,
+            "gradients": 3.122502256758253e-17,
+            "parameters": 2.220446049250313e-16,
+            "adam_moments": 6.5052130349130266e-18
+          },
+          "local_parameter_numel": 2984,
+          "units": [
+            {
+              "unit": "token_embedding",
+              "full_numel": 496,
+              "shard_numel": 248,
+              "padding_numel": 0
+            },
+            {
+              "unit": "blocks.0",
+              "full_numel": 2480,
+              "shard_numel": 1240,
+              "padding_numel": 0
+            },
+            {
+              "unit": "blocks.1",
+              "full_numel": 2480,
+              "shard_numel": 1240,
+              "padding_numel": 0
+            },
+            {
+              "unit": "output",
+              "full_numel": 512,
+              "shard_numel": 256,
+              "padding_numel": 0
+            }
+          ],
+          "reduce_scatter_calls": 12
+        }
+      ]
+    },
+    {
+      "world_size": 3,
+      "ranks": [
+        {
+          "status": "PASS",
+          "rank": 0,
+          "pid": 26880,
+          "device": "cpu",
+          "steps": 3,
+          "batches": [
+            [
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              3
+            ],
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "max_abs_error": {
+            "logits": 2.220446049250313e-16,
+            "gradients": 6.938893903907228e-17,
+            "parameters": 5.551115123125783e-17,
+            "adam_moments": 6.5052130349130266e-18
+          },
+          "local_parameter_numel": 1991,
+          "units": [
+            {
+              "unit": "token_embedding",
+              "full_numel": 496,
+              "shard_numel": 166,
+              "padding_numel": 2
+            },
+            {
+              "unit": "blocks.0",
+              "full_numel": 2480,
+              "shard_numel": 827,
+              "padding_numel": 1
+            },
+            {
+              "unit": "blocks.1",
+              "full_numel": 2480,
+              "shard_numel": 827,
+              "padding_numel": 1
+            },
+            {
+              "unit": "output",
+              "full_numel": 512,
+              "shard_numel": 171,
+              "padding_numel": 1
+            }
+          ],
+          "reduce_scatter_calls": 12
+        },
+        {
+          "status": "PASS",
+          "rank": 1,
+          "pid": 26684,
+          "device": "cpu",
+          "steps": 3,
+          "batches": [
+            [
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              3
+            ],
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "max_abs_error": {
+            "logits": 2.7755575615628914e-16,
+            "gradients": 6.938893903907228e-17,
+            "parameters": 5.551115123125783e-17,
+            "adam_moments": 6.5052130349130266e-18
+          },
+          "local_parameter_numel": 1991,
+          "units": [
+            {
+              "unit": "token_embedding",
+              "full_numel": 496,
+              "shard_numel": 166,
+              "padding_numel": 2
+            },
+            {
+              "unit": "blocks.0",
+              "full_numel": 2480,
+              "shard_numel": 827,
+              "padding_numel": 1
+            },
+            {
+              "unit": "blocks.1",
+              "full_numel": 2480,
+              "shard_numel": 827,
+              "padding_numel": 1
+            },
+            {
+              "unit": "output",
+              "full_numel": 512,
+              "shard_numel": 171,
+              "padding_numel": 1
+            }
+          ],
+          "reduce_scatter_calls": 12
+        },
+        {
+          "status": "PASS",
+          "rank": 2,
+          "pid": 56464,
+          "device": "cpu",
+          "steps": 3,
+          "batches": [
+            [
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              3
+            ],
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "max_abs_error": {
+            "logits": 2.7755575615628914e-16,
+            "gradients": 6.938893903907228e-17,
+            "parameters": 5.551115123125783e-17,
+            "adam_moments": 6.5052130349130266e-18
+          },
+          "local_parameter_numel": 1991,
+          "units": [
+            {
+              "unit": "token_embedding",
+              "full_numel": 496,
+              "shard_numel": 166,
+              "padding_numel": 2
+            },
+            {
+              "unit": "blocks.0",
+              "full_numel": 2480,
+              "shard_numel": 827,
+              "padding_numel": 1
+            },
+            {
+              "unit": "blocks.1",
+              "full_numel": 2480,
+              "shard_numel": 827,
+              "padding_numel": 1
+            },
+            {
+              "unit": "output",
+              "full_numel": 512,
+              "shard_numel": 171,
+              "padding_numel": 1
+            }
+          ],
+          "reduce_scatter_calls": 12
+        }
+      ]
+    }
+  ]
+}

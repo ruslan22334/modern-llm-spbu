@@ -1,0 +1,623 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Логические GPU: трасса обменов</title>
+<style>
+:root{--ink:#152c40;--muted:#506879;--line:#d2dfe6;--blue:#126fab;--green:#16836b;--orange:#c66d22}*{box-sizing:border-box}body{margin:0;background:#f6f8f9;color:var(--ink);font:16px/1.5 system-ui,Arial}main{max-width:1360px;margin:auto;padding:36px 32px}h1{font-size:34px;line-height:1.2;margin:0 0 12px}p{max-width:1000px;margin:8px 0 20px;color:var(--muted)}.controls{display:flex;gap:24px;align-items:center;flex-wrap:wrap;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}input,select,button{font:inherit}button{border:0;background:var(--blue);color:white;padding:9px 15px;border-radius:4px;cursor:pointer}select{padding:8px;background:white;border:1px solid var(--line)}.board{overflow:auto;background:white;margin:24px 0;border:1px solid var(--line);min-height:160px}.lane{display:flex;align-items:center;border-bottom:1px solid #e6edf0;min-width:960px;height:78px}.rank{width:120px;flex-shrink:0;font-weight:650;padding:0 20px}.events{position:relative;flex:1;height:54px}.event{position:absolute;top:7px;height:40px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:white;border-radius:3px;cursor:pointer;border:2px solid transparent;padding:5px 7px;font:13px/1.6 ui-monospace,monospace}.event:focus,.event.selected{outline:2px solid var(--ink);outline-offset:3px}.axis{display:flex;min-width:960px;margin:15px 0 0}.axis .slots{display:flex;flex:1;font:13px ui-monospace,monospace;color:var(--muted)}.slot{flex:1;text-align:center}.legend{display:flex;gap:24px;flex-wrap:wrap;font-size:14px}.legend span:before{content:"";display:inline-block;width:14px;height:14px;background:var(--c);margin-right:7px;vertical-align:-2px}.info{background:white;padding:22px;border-left:4px solid var(--blue);min-height:130px}.info h2{font-size:21px;margin:0 0 10px}.fields{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px;font-size:15px}.fields b{display:block;color:var(--muted);font-size:12px;font-weight:500;text-transform:uppercase}code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}#error{color:#b43f4d}footer{color:var(--muted);font-size:14px;margin-top:20px}@media(max-width:700px){main{padding:24px 14px}.fields{grid-template-columns:1fr}h1{font-size:27px}}</style>
+<main><h1>Mesh и ranks: обмены между процессами</h1><p>Каждая строка — отдельный rank. По горизонтали — номер его локального вызова, <strong>не время GPU</strong>. Устройства назначаются каждому rank отдельно; можно использовать CPU, одну общую GPU или несколько GPU. Учебные обмены проходят через CPU и Gloo.</p>
+<div class="controls"><label>Загрузить trace JSON <input id="file" type="file" accept=".json,application/json"></label><label>Rank <select id="rank"><option value="all">Все</option></select></label><button id="sample">Встроенный пример</button><label><input id="hide" type="checkbox"> Скрыть barrier</label></div><p id="error" role="alert"></p><div id="summary"></div><div class="board" id="board"></div><div class="legend"><span style="--c:#126fab">AllGather / Broadcast</span><span style="--c:#16836b">Reduce / ReduceScatter</span><span style="--c:#c66d22">AllToAll / Send / Recv</span><span style="--c:#657787">Barrier / другое</span></div><p>Для коллективов номер вызова помогает проверить одинаковый порядок. В P2P сопоставляйте также source, destination и tag. Две полосы в одной колонке не доказывают одновременное исполнение.</p><div class="info" id="info" aria-live="polite"><h2>Выберите операцию</h2><span>Посмотрите форму тензора, dtype, peer/tag и аналитический объём обмена.</span></div><footer>Метрики payload не включают PCIe staging, протокольные заголовки и конкуренцию процессов. Аналитическая модель и CPU transport не предсказывают скорость NCCL на нескольких физических GPU.</footer></main>
+<script>
+const SAMPLE = {
+  "schema_version": 1,
+  "world_size": 4,
+  "time_model": "logical rank-local operation slots; not elapsed GPU/CPU time",
+  "events": [
+    {
+      "rank": 0,
+      "step": 0,
+      "op": "all_reduce",
+      "start": 0,
+      "end": 1,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 1,
+      "step": 0,
+      "op": "all_reduce",
+      "start": 0,
+      "end": 1,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 2,
+      "step": 0,
+      "op": "all_reduce",
+      "start": 0,
+      "end": 1,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 3,
+      "step": 0,
+      "op": "all_reduce",
+      "start": 0,
+      "end": 1,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 0,
+      "step": 1,
+      "op": "all_reduce",
+      "start": 1,
+      "end": 2,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 1,
+      "step": 1,
+      "op": "all_reduce",
+      "start": 1,
+      "end": 2,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 2,
+      "step": 1,
+      "op": "all_reduce",
+      "start": 1,
+      "end": 2,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 3,
+      "step": 1,
+      "op": "all_reduce",
+      "start": 1,
+      "end": 2,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 1440.0,
+      "received_bytes": 1440.0,
+      "byte_model": "reference ideal ring: 2*(p-1)/p*N bytes/rank; Gloo may use another algorithm; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum"
+      }
+    },
+    {
+      "rank": 0,
+      "step": 2,
+      "op": "all_gather",
+      "start": 2,
+      "end": 3,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 1,
+      "step": 2,
+      "op": "all_gather",
+      "start": 2,
+      "end": 3,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 2,
+      "step": 2,
+      "op": "all_gather",
+      "start": 2,
+      "end": 3,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 3,
+      "step": 2,
+      "op": "all_gather",
+      "start": 2,
+      "end": 3,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 0,
+      "step": 3,
+      "op": "reduce_scatter",
+      "start": 3,
+      "end": 4,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    },
+    {
+      "rank": 1,
+      "step": 3,
+      "op": "reduce_scatter",
+      "start": 3,
+      "end": 4,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    },
+    {
+      "rank": 2,
+      "step": 3,
+      "op": "reduce_scatter",
+      "start": 3,
+      "end": 4,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    },
+    {
+      "rank": 3,
+      "step": 3,
+      "op": "reduce_scatter",
+      "start": 3,
+      "end": 4,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    },
+    {
+      "rank": 0,
+      "step": 4,
+      "op": "all_gather",
+      "start": 4,
+      "end": 5,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 1,
+      "step": 4,
+      "op": "all_gather",
+      "start": 4,
+      "end": 5,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 2,
+      "step": 4,
+      "op": "all_gather",
+      "start": 4,
+      "end": 5,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 3,
+      "step": 4,
+      "op": "all_gather",
+      "start": 4,
+      "end": 5,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        6,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720,
+      "received_bytes": 720,
+      "byte_model": "reference ideal ring: (p-1)*local_bytes; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "axis": 0
+      }
+    },
+    {
+      "rank": 0,
+      "step": 5,
+      "op": "reduce_scatter",
+      "start": 5,
+      "end": 6,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    },
+    {
+      "rank": 1,
+      "step": 5,
+      "op": "reduce_scatter",
+      "start": 5,
+      "end": 6,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    },
+    {
+      "rank": 2,
+      "step": 5,
+      "op": "reduce_scatter",
+      "start": 5,
+      "end": 6,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    },
+    {
+      "rank": 3,
+      "step": 5,
+      "op": "reduce_scatter",
+      "start": 5,
+      "end": 6,
+      "group": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shape": [
+        24,
+        5
+      ],
+      "dtype": "torch.float64",
+      "sent_bytes": 720.0,
+      "received_bytes": 720.0,
+      "byte_model": "reference ideal RS ring: (p-1)/p*N; implementation uses Gloo AR + slice; excludes debug metadata, CPU staging and protocol overhead",
+      "details": {
+        "reduction": "sum",
+        "axis": 0,
+        "implementation": "all_reduce_then_slice",
+        "implementation_reference_sent_bytes": 1440.0
+      }
+    }
+  ]
+};
+let data=[], selected=null; const $=id=>document.getElementById(id);
+const escapeHTML=s=>String(s??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function color(op){op=op.toLowerCase();return /scatter|reduce/.test(op)?'#16836b':/gather|broadcast/.test(op)?'#126fab':/send|recv|all.to.all/.test(op)?'#c66d22':'#657787'}
+function fmt(x){return Number.isFinite(Number(x))?Number(x).toLocaleString('ru-RU')+' B':'—'}
+function normalize(raw){let events=Array.isArray(raw)?raw:raw.events??raw.trace??raw.ranks?.flatMap(r=>r.events)??[];if(!Array.isArray(events))throw Error('Ожидается массив events');return events.map((e,i)=>({...e,rank:Number(e.rank),step:Number(e.step??e.sequence??e.start??i),op:String(e.op??e.operation??'unknown')})).filter(e=>Number.isInteger(e.rank)&&Number.isFinite(e.step))}
+function load(raw){data=normalize(raw);$('error').textContent='';const ranks=[...new Set(data.map(e=>e.rank))].sort((a,b)=>a-b);$('rank').innerHTML='<option value="all">Все</option>'+ranks.map(r=>`<option value="${r}">${r}</option>`).join('');$('summary').textContent=data.length?`${ranks.length} рангов · ${data.length} операций. Один rank соответствует одному процессу.`:raw.label??'Пустая трасса';render()}
+function show(e,node){document.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected'));node.classList.add('selected');selected=e;const shape=Array.isArray(e.shape)?JSON.stringify(e.shape):e.shape;const pairs=[['Rank',e.rank],['Локальный вызов',e.step],['Shape',shape],['Dtype',e.dtype],['Sent payload',fmt(e.sent_bytes)],['Received payload',fmt(e.received_bytes)],['Модель байт',e.byte_model??e.model],['Communicator',JSON.stringify(e.group??'world')],['Peer / детали',JSON.stringify(e.details??{})]];$('info').innerHTML=`<h2>${escapeHTML(e.op)}</h2><div class="fields">${pairs.map(([k,v])=>`<div><b>${escapeHTML(k)}</b><code>${escapeHTML(v)}</code></div>`).join('')}</div>`}
+function render(){selected=null;$('info').innerHTML='<h2>Выберите операцию</h2><span>Посмотрите форму тензора, dtype, peer/tag и аналитический объём обмена.</span>';const max=Math.max(1,...data.map(e=>e.step+1)),chosen=$('rank').value,hide=$('hide').checked;const ranks=[...new Set(data.map(e=>e.rank))].sort((a,b)=>a-b).filter(r=>chosen==='all'||r===Number(chosen));$('board').innerHTML='';const ax=document.createElement('div');ax.className='axis';ax.style.width=(120+Math.max(800,max*94))+'px';ax.innerHTML='<div class="rank">Вызов</div><div class="slots">'+Array.from({length:max},(_,i)=>`<div class="slot">${i}</div>`).join('')+'</div>';$('board').append(ax);ranks.forEach(r=>{const lane=document.createElement('div');lane.className='lane';lane.style.width=(120+Math.max(800,max*94))+'px';lane.innerHTML=`<div class="rank">Rank ${r}</div><div class="events"></div>`;const events=lane.querySelector('.events');events.style.minWidth=Math.max(800,max*94)+'px';data.filter(e=>e.rank===r&&(!hide||e.op!=='barrier')).forEach(e=>{const b=document.createElement('button');b.className='event';b.style.left=(e.step/max*100)+'%';b.style.width=(100/max-.4)+'%';b.style.background=color(e.op);b.textContent=e.op;b.title=`Rank ${r}, #${e.step}: ${e.op}`;b.onclick=()=>show(e,b);events.append(b)});$('board').append(lane)});if(!ranks.length)$('board').textContent='Загрузите JSON, созданный emugpu --trace trace.json.'}
+$('file').onchange=async()=>{try{load(JSON.parse(await $('file').files[0].text()))}catch(e){$('error').textContent=e.message}};$('rank').onchange=render;$('hide').onchange=render;$('sample').onclick=()=>load(SAMPLE);load(SAMPLE);
+</script></html>

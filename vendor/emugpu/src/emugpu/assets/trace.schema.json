@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "emugpu logical operation trace (no elapsed GPU or CPU timings)",
+  "type": "object",
+  "required": ["schema_version", "world_size", "time_model"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "world_size": {"type": "integer", "minimum": 1},
+    "time_model": {"type": "string"},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "examples": {"type": "array", "items": {
+      "type": "object", "required": ["example", "events"],
+      "properties": {"example": {"type": "string"}, "events": {
+        "type": "array", "items": {"$ref": "#/$defs/event"}}}
+    }}
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["rank", "step", "op", "start", "end", "group", "shape", "dtype", "sent_bytes", "received_bytes", "byte_model", "details"],
+      "properties": {
+        "rank": {"type": "integer"}, "step": {"type": "integer"},
+        "op": {"enum": ["all_reduce", "all_gather", "reduce_scatter", "broadcast", "all_to_all", "barrier", "send", "recv", "send_recv", "isend", "irecv"]},
+        "start": {"type": "integer", "description": "Logical local operation slot, NOT time"},
+        "end": {"type": "integer", "description": "start+1, NOT duration"},
+        "group": {"type": "array", "items": {"type": "integer"}},
+        "shape": {"type": ["array", "null"]},
+        "dtype": {"type": ["string", "null"]},
+        "sent_bytes": {"type": "number", "minimum": 0},
+        "received_bytes": {"type": "number", "minimum": 0},
+        "byte_model": {"type": "string"}, "details": {"type": "object"}
+      }
+    }
+  }
+}
